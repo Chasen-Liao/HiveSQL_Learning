@@ -182,16 +182,142 @@ values ("《疑犯追踪》", "悬疑,动作,科幻,剧情"),
 select cate, count(*) cnt
 from (
          select movie,
-                split(category, ",") as category
+                split(category, ",") as category -- split 分割为数组
          from movie_info
      ) t1 lateral view explode(category) tmp as cate -- 新的列字段
-group by cate
+group by cate;
 
 
 
+-- 窗口函数
+-- lead & leg
+select *,
+       lead(salary, 1, 0) over (partition by job order by salary) as next_salary,
+       lag(salary, 1, 0) over (partition by job order by salary) as pre_salary
+from employee;
+-- 不支持自定义窗口函数
+
+-- first_value & last_value
+-- 获取窗口的第一个值和最后一个值
+-- 不用自己写窗口范围
+select *,
+       first_value(salary) over (partition by job order by salary) as first_salary,
+       last_value(salary) over (partition by job order by salary) as last_salary
+from employee;
+
+-- 排名函数
+-- rank & dense_rank & row_number
+-- rank 函数在并列的时候会重复，1 1 3
+-- dense_rank 函数在并列的时候 是密集的 dense是密集的意思，1 1 2
+-- row_number 函数在并列的时候，会从1开始编号 1 2 3
+
+select *,
+       rank() over (partition by job order by salary desc) as rank,
+       dense_rank() over (partition by job order by salary desc) as dense_rank,
+       row_number() over (partition by job order by salary desc) as row_number
+from employee;
 
 
+-- 案例
+create table order_info
+(
+    order_id     string, --订单id
+    user_id      string, -- 用户id
+    user_name    string, -- 用户姓名
+    order_date   string, -- 下单日期
+    order_amount int     -- 订单金额
+);
 
+insert overwrite table order_info
+values ('1', '1001', '小元', '2022-01-01', '10'),
+       ('2', '1002', '小海', '2022-01-02', '15'),
+       ('3', '1001', '小元', '2022-02-03', '23'),
+       ('4', '1002', '小海', '2022-01-04', '29'),
+       ('5', '1001', '小元', '2022-01-05', '46'),
+       ('6', '1001', '小元', '2022-04-06', '42'),
+       ('7', '1002', '小海', '2022-01-07', '50'),
+       ('8', '1001', '小元', '2022-01-08', '50'),
+       ('9', '1003', '小辉', '2022-04-08', '62'),
+       ('10', '1003', '小辉', '2022-04-09', '62'),
+       ('11', '1004', '小猛', '2022-05-10', '12'),
+       ('12', '1003', '小辉', '2022-04-11', '75'),
+       ('13', '1004', '小猛', '2022-06-12', '80'),
+       ('14', '1003', '小辉', '2022-04-13', '94');
+
+-- 1. 统计每个用户截至每次下单的累积下单总额
+select order_id,
+       user_id,
+       user_name,
+       order_date,
+       order_amount,
+       sum(order_amount) over (partition by user_id order by order_date rows between unbounded preceding and current row) as sum_so_far
+from order_info;
+
+-- 2. 统计每个用户截至每次下单的当月累积下单总额
+select order_id,
+       user_id,
+       user_name,
+       order_date,
+       order_amount,
+       sum(order_amount) over (partition by substring(order_date, 1, 7) -- 要带上年份，要不然区分不了年份
+           order by order_date rows between unbounded preceding and current row)
+           as sum_so_far
+from order_info;
+
+-- 3. 统计每个用户每次下单距离上次下单相隔的天数（首次下单按0天算）
+select order_id,
+       user_id,
+       user_name,
+       order_date,
+       order_amount, -- lag 取上面1行的值
+       lag(order_date, 1, '2020-01-01') over (partition by user_id order by order_date) as order_amount,
+       datediff(order_date, lag(order_date, 1, '2020-01-01') over (partition by user_id order by order_date)) as diff
+from order_info;
+
+
+-- 用子查询减少窗口函数的开销
+select order_id,
+       user_id,
+       user_name,
+       order_date,
+       order_amount,
+       nvl(datediff(order_date, pre_order_date), 0) as diff -- 如果是null也就说明是第一次下单，变为0
+from
+(
+    select order_id,
+           user_id,
+           user_name,
+           order_date,
+           order_amount,
+           lag(order_date, 1, null) over (partition by user_id order by order_date) as pre_order_date
+    from order_info
+) t1;
+
+-- 3. 查询所有下单记录以及每个用户的每个下单记录所在月份的首/末次下单日期
+select order_id,
+       user_id,
+       user_name,
+       order_date,
+       order_amount,
+       first_value(order_date) over (partition by user_id, substring(order_date, 1, 7) order by order_date) as first_order_date,
+       last_value(order_date) over (partition by user_id, substring(order_date, 1, 7) order by order_date
+           rows between unbounded preceding and unbounded following) as last_order_date
+from order_info; -- 错误！因为不显式指定窗口范围的话，
+-- 有order by 默认帧是前面所有到当前行 range between unbounded preceding and current row
+-- 不包含order by 的话，默认是rows between unbounded preceding and current row
+
+-- 5. 为每个用户的所有下单记录按照订单金额进行排名
+select order_id,
+       user_id,
+       user_name,
+       order_date,
+       order_amount,
+       rank() over(partition by user_id order by order_amount desc) rk,
+       dense_rank() over (partition by user_id order by order_amount desc) drk,
+       row_number() over (partition by user_id order by order_amount desc) rn -- 里面不加参数！
+from order_info;
+
+-- 分组topN -- 找出前topN的数据，先拿子查询，子查询里面写窗口函数，然后where rk <= topN
 
 
 
