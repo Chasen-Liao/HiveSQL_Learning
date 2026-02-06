@@ -4,7 +4,8 @@ use learn_hive;
 -- 1.1 用户信息表
 
 DROP TABLE IF EXISTS user_info;
-create table user_info(
+create table user_info
+(
     `user_id`  string COMMENT '用户id',
     `gender`   string COMMENT '性别',
     `birthday` string COMMENT '生日'
@@ -26,7 +27,8 @@ values ('101', '男', '1990-01-01'),
 
 -- 1.2 商品信息表
 DROP TABLE IF EXISTS sku_info;
-CREATE TABLE sku_info(
+CREATE TABLE sku_info
+(
     `sku_id`      string COMMENT '商品id',
     `name`        string COMMENT '商品名称',
     `category_id` string COMMENT '所属分类id',
@@ -53,20 +55,22 @@ values ('1', 'xiaomi 10', '1', '2020-01-01', 2000),
 -- 1.3 商品分类信息表
 
 DROP TABLE IF EXISTS category_info;
-create table category_info(
+create table category_info
+(
     `category_id`   string,
     `category_name` string
 ) COMMENT '品类表'
     ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t';
 
 insert overwrite table category_info
-values ('1','数码'),
-       ('2','厨卫'),
-       ('3','户外');
+values ('1', '数码'),
+       ('2', '厨卫'),
+       ('3', '户外');
 
 -- 1.4 订单信息表
 DROP TABLE IF EXISTS order_info;
-create table order_info(
+create table order_info
+(
     `order_id`     string COMMENT '订单id',
     `user_id`      string COMMENT '用户id',
     `create_date`  string COMMENT '下单日期',
@@ -366,7 +370,8 @@ values ('1', '1', '101', '2021-09-27', '2021-09-29'),
 
 -- 1.9 好友关系表
 DROP TABLE IF EXISTS friendship_info;
-CREATE TABLE friendship_info(
+CREATE TABLE friendship_info
+(
     `user1_id` string comment '用户1id',
     `user2_id` string comment '用户2id'
 ) COMMENT '用户关系表'
@@ -505,43 +510,63 @@ USE middle;
 
 -- 迁移 user_info 表
 CREATE TABLE IF NOT EXISTS user_info LIKE learn_hive.user_info; -- like
-INSERT OVERWRITE TABLE user_info SELECT * FROM learn_hive.user_info;
+INSERT OVERWRITE TABLE user_info
+SELECT *
+FROM learn_hive.user_info;
 
 -- 迁移 sku_info 表
 CREATE TABLE IF NOT EXISTS sku_info LIKE learn_hive.sku_info;
-INSERT OVERWRITE TABLE sku_info SELECT * FROM learn_hive.sku_info;
+INSERT OVERWRITE TABLE sku_info
+SELECT *
+FROM learn_hive.sku_info;
 
 -- 迁移 category_info 表
 CREATE TABLE IF NOT EXISTS category_info LIKE learn_hive.category_info;
-INSERT OVERWRITE TABLE category_info SELECT * FROM learn_hive.category_info;
+INSERT OVERWRITE TABLE category_info
+SELECT *
+FROM learn_hive.category_info;
 
 -- 迁移 order_info 表
 CREATE TABLE IF NOT EXISTS order_info LIKE learn_hive.order_info;
-INSERT OVERWRITE TABLE order_info SELECT * FROM learn_hive.order_info;
+INSERT OVERWRITE TABLE order_info
+SELECT *
+FROM learn_hive.order_info;
 
 -- 迁移 order_detail 表
 CREATE TABLE IF NOT EXISTS order_detail LIKE learn_hive.order_detail;
-INSERT OVERWRITE TABLE order_detail SELECT * FROM learn_hive.order_detail;
+INSERT OVERWRITE TABLE order_detail
+SELECT *
+FROM learn_hive.order_detail;
 
 -- 迁移 user_login_detail 表
 CREATE TABLE IF NOT EXISTS user_login_detail LIKE learn_hive.user_login_detail;
-INSERT OVERWRITE TABLE user_login_detail SELECT * FROM learn_hive.user_login_detail;
+INSERT OVERWRITE TABLE user_login_detail
+SELECT *
+FROM learn_hive.user_login_detail;
 
 -- 迁移 sku_price_modify_detail 表
 CREATE TABLE IF NOT EXISTS sku_price_modify_detail LIKE learn_hive.sku_price_modify_detail;
-INSERT OVERWRITE TABLE sku_price_modify_detail SELECT * FROM learn_hive.sku_price_modify_detail;
+INSERT OVERWRITE TABLE sku_price_modify_detail
+SELECT *
+FROM learn_hive.sku_price_modify_detail;
 
 -- 迁移 delivery_info 表
 CREATE TABLE IF NOT EXISTS delivery_info LIKE learn_hive.delivery_info;
-INSERT OVERWRITE TABLE delivery_info SELECT * FROM learn_hive.delivery_info;
+INSERT OVERWRITE TABLE delivery_info
+SELECT *
+FROM learn_hive.delivery_info;
 
 -- 迁移 friendship_info 表
 CREATE TABLE IF NOT EXISTS friendship_info LIKE learn_hive.friendship_info;
-INSERT OVERWRITE TABLE friendship_info SELECT * FROM learn_hive.friendship_info;
+INSERT OVERWRITE TABLE friendship_info
+SELECT *
+FROM learn_hive.friendship_info;
 
 -- 迁移 favor_info 表
 CREATE TABLE IF NOT EXISTS favor_info LIKE learn_hive.favor_info;
-INSERT OVERWRITE TABLE favor_info SELECT * FROM learn_hive.favor_info;
+INSERT OVERWRITE TABLE favor_info
+SELECT *
+FROM learn_hive.favor_info;
 
 -- delete all
 USE learn_hive;
@@ -561,26 +586,25 @@ USE middle;
 
 -- 2. 练习题
 -- 查询累积销量排名第二的商品
-select  *
-from
-(select sku_id,
-       total_num,
-       rank() over (order by total_num) rk
-from
-(
-    select sku_id,
-           sum(sku_num) as total_num
-    from order_detail
-    group by sku_id -- 先做分组聚合算出累计销量
-) t1) t2 where rk = 2;
+select *
+from (select sku_id,
+             total_num,
+             rank() over (order by total_num) rk
+      from (
+               select sku_id,
+                      sum(sku_num) as total_num
+               from order_detail
+               group by sku_id -- 先做分组聚合算出累计销量
+           ) t1) t2
+where rk = 2;
 
 select *
-from
-(select sku_id,
-       sum(sku_num) as total_num,
-       rank() over (order by sum(sku_num)) rk
-from order_detail
-group by sku_id) t1 where rk = 2;
+from (select sku_id,
+             sum(sku_num) as                     total_num,
+             rank() over (order by sum(sku_num)) rk
+      from order_detail
+      group by sku_id) t1
+where rk = 2;
 -- 2.2 [课堂讲解]查询至少连续三天下单的用户
 -- 去重的三种方法
 -- 1. distinct
@@ -612,7 +636,152 @@ from (
               ) t2 -- 判断一串日期是否连续：若连续，用这个日期减去它的排名，会得到一个相同的结果
          group by user_id, flag
          having count(flag) >= 3 -- 连续下单大于等于三天
+    -- 分组 聚合
      ) t3;
+
+-- datadiff
+-- lead 向下取 lag向上取
+select distinct user_id
+from (
+         select user_id,
+                datediff(lead2, create_date) diff
+         from (
+                  select user_id,
+                         create_date,
+                         lead(create_date, 2, '9999-12-31') over (partition by user_id order by create_date) lead2
+                  from (
+                           select distinct user_id,
+                                           create_date
+                           from order_info -- 同一天可能多个用户下单，进行去重
+                       ) t1
+              ) t2 -- 通过lead函数来获取下两行的日期
+     ) t3 -- datediff来判断是否连续三天
+where diff = 2;
+
+-- 2.4 [课堂讲解]查询用户的累计消费金额及VIP等级
+-- 从订单信息表(order_info)中统计每个用户截止其每个下单日期的累积消费金额，以及每个用户在其每个下单日期的VIP等级。
+-- 用户vip等级根据累积消费金额计算，计算规则如下：
+-- 设累积消费总额为X，
+-- 若0=<X<10000,则vip等级为普通会员
+-- 若10000<=X<30000,则vip等级为青铜会员
+-- 若30000<=X<50000,则vip等级为白银会员
+-- 若50000<=X<80000,则vip为黄金会员
+-- 若80000<=X<100000,则vip等级为白金会员
+-- 若X>=100000,则vip等级为钻石会员
+
+
+-- 1. 需要一个开窗函数来统计累计消费金额
+-- 2. 需要一个开窗函数来判断VIP等级
+select user_id,
+       create_date,
+       total as sum_so_far,
+       case when total < 10000 then '普通会员'
+             when total >= 10000 and total < 30000 then '青铜会员'
+             when total >= 30000 and total < 50000 then '白银会员'
+             when total >= 50000 and total < 80000 then '黄金会员'
+             when total >= 80000 and total < 100000 then '白金会员'
+             when total >= 100000 then '钻石会员'
+       end vip_level
+from
+(
+    select user_id,
+           create_date,
+           sum(total_amount) over (partition by user_id order by create_date) total
+    from order_info -- 截止每个下单日期的累计消费金额
+) t1; -- 错误写法！❌ 没有考虑同一天同一个用户多笔订单的情况
+
+
+select user_id,
+       create_date,
+       sum_so_far,
+       case
+           when sum_so_far >= 100000 then '钻石会员'
+           when sum_so_far >= 80000 then '白金会员'
+           when sum_so_far >= 50000 then '黄金会员'
+           when sum_so_far >= 30000 then '白银会员'
+           when sum_so_far >= 10000 then '青铜会员'
+           when sum_so_far >= 0 then '普通会员'
+           end vip_level
+from (
+         select user_id,
+                create_date,
+                sum(total_amount_per_day) over (partition by user_id order by create_date) sum_so_far
+         from (
+                  select user_id,
+                         create_date,
+                         sum(total_amount) total_amount_per_day
+                  from order_info
+                  group by user_id, create_date -- 每一个用户在每一天的消费总金额，因为一天内同一个用户可能下单多次
+              ) t1
+     ) t2;
+
+
+
+-- 1. 聚合同一个用户同一天的订单金额
+-- 2. 通过开窗函数来计算截止当前日期的累计消费金额
+
+select user_id,
+       create_date,
+       sum_so_far,
+       case when sum_so_far >= 100000 then '钻石会员' -- 注意“短路求值”！
+            when sum_so_far >= 80000 then '白金会员' -- 从高到低来匹配，命中就停
+            when sum_so_far >= 50000 then '黄金会员'
+            when sum_so_far >= 30000 then '白银会员'
+            when sum_so_far >= 10000 then '青铜会员'
+            else '普通会员'
+            end vip_level
+from
+(
+    select user_id,
+           create_date,
+           sum(total_amount_per_day) over (partition by user_id order by create_date
+               rows between unbounded preceding and current row) sum_so_far -- 截止当前日期的累计消费金额
+    -- 这里已经按照userid和create_date进行排序了，所以不会有日期重复，range 和 rows都是一样的结果
+    from
+    (
+        select user_id,
+               create_date,
+               sum(total_amount) as total_amount_per_day
+        from order_info
+        group by user_id, create_date
+    ) t1 -- 聚合同一个用户同一天的订单金额
+)t2;
+
+-- 2.5 [课堂讲解]查询首次下单后第二天连续下单的用户比率
+-- 从订单信息表(order_info)中查询首次下单后第二天仍然下单的用户占所有下单用户的比例，结果保留一位小数，使用百分数显示
+
+
+-- 1. 分组去重同一天多次下单的用户
+-- 2. rank进行排序之后找前面两个
+select round(sum(`if`(datediff(second_day, first_day)=1, 1, 0)) / count(*) * 100, 1) || '%' -- || 拼接字符串
+from
+(
+    select user_id,
+           max(create_date) first_day, -- 同一个用户的第一次下单
+           min(create_date) second_day
+    from
+    (
+        select user_id,
+               create_date
+        from
+        (
+            select user_id,
+                   create_date,
+                   rank() over (partition by user_id order by create_date) rk -- 拿到用户的下单日期排名的前两名
+            -- 因为是首次下单后第二天
+            from
+            (
+                select user_id,
+                       create_date
+                from order_info
+                group by user_id, create_date -- 去重同一个用户一天多次下单
+            )t1
+        )t2 where rk <= 2 -- 获取前两个日期，然后比较前两个日期是否相隔一天
+    )t3 group by user_id
+)t4
+
+
+-- 自定义函数
 
 
 
